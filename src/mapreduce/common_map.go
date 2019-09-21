@@ -64,23 +64,27 @@ func doMap(
 		panic(err)
 	}
 
-	contentsStr := string(contents)
-	kvs := mapF(inFile, contentsStr)
+	kvs := mapF(inFile, string(contents))
+
+	keyValuesMap := map[int][]KeyValue{}
 
 	for _, kv := range kvs {
-		ihashNum := ihash(kv.Key)
+		index := ihash(kv.Key) % nReduce
+		keyValuesMap[index] = append(keyValuesMap[index], kv)
+	}
 
-		tmpFile, err := os.OpenFile(reduceName(jobName, mapTaskNumber, ihashNum % nReduce),
-			os.O_RDWR | os.O_APPEND | os.O_CREATE, 0777)
+	for index, values := range keyValuesMap {
+		reduceFileName := reduceName(jobName, mapTaskNumber, index)
+		reduceFile, err := os.Create(reduceFileName)
 		if err != nil {
 			panic(err)
 		}
-		defer tmpFile.Close()
-		enc := json.NewEncoder(tmpFile)
-		err = enc.Encode(&kv)
+		data, err := json.Marshal(values)
 		if err != nil {
 			panic(err)
 		}
+		//ioutil.WriteFile(reduceFileName, data, 0777)
+		reduceFile.Write(data)
 	}
 }
 

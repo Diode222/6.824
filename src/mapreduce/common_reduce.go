@@ -51,36 +51,38 @@ func doReduce(
 	//
 
 	// Diode222 implement
+	kvs := []KeyValue{}
+
 	for i := 0; i < nMap; i++ {
-		jsonBytes, err := ioutil.ReadFile(reduceName(jobName, i, reduceTaskNumber))
+		reduceFileName := reduceName(jobName, i, reduceTaskNumber)
+		data, err := ioutil.ReadFile(reduceFileName)
 		if err != nil {
 			panic(err)
 		}
 
-		var kvs []KeyValue
-		err = json.Unmarshal(jsonBytes, &kvs)
-		if err != nil {
-			panic(err)
-		}
+		var dataKVS []KeyValue
+		json.Unmarshal(data, &dataKVS)
+		kvs = append(kvs, dataKVS...)
+	}
 
-		keyValues := map[string][]string{}
-		for _, kv := range kvs {
-			if values, ok := keyValues[kv.Key]; ok {
-				keyValues[kv.Key] = append(values, kv.Value)
-			} else {
-				keyValues[kv.Key] = []string{kv.Value}
-			}
-		}
-
-		outputFile, err := os.OpenFile(mergeName(jobName, reduceTaskNumber), os.O_RDWR | os.O_APPEND | os.O_CREATE, 0777)
-		if err != nil {
-			panic(err)
-		}
-		defer outputFile.Close()
-
-		enc := json.NewEncoder(outputFile)
-		for key, values := range keyValues {
-			enc.Encode(KeyValue{key, reduceF(key, values)})
+	kvsMap := map[string][]string{}
+	for _, kv := range kvs {
+		if values, ok := kvsMap[kv.Key]; ok {
+			kvsMap[kv.Key] = append(values, kv.Value)
+		} else {
+			kvsMap[kv.Key] = []string{kv.Value}
 		}
 	}
+
+	outfile, err := os.Create(outFile)
+	if err != nil {
+		panic(err)
+	}
+
+	enc := json.NewEncoder(outfile)
+	for key, values := range kvsMap {
+		enc.Encode(KeyValue{key, reduceF(key, values)})
+	}
+
+	outfile.Close()
 }

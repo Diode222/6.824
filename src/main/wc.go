@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
-	"mapreduce"
+	"../mapreduce"
 	"os"
+	"strconv"
+	"strings"
 )
 
 //
@@ -15,6 +17,22 @@ import (
 //
 func mapF(filename string, contents string) []mapreduce.KeyValue {
 	// TODO: you have to write this function
+	// Diode implement
+	dataSlice := strings.FieldsFunc(contents, func(r rune) bool {
+		if r >= 'a' && r <= 'z' && r > 'Z' || r >= 'A' && r <= 'Z' && r < 'a' {
+			return false
+		}
+		return true
+	})
+
+	kvs := []mapreduce.KeyValue{}
+	for _, data := range dataSlice {
+		kvs = append(kvs, mapreduce.KeyValue{
+			Key:   data,
+			Value: "1",
+		})
+	}
+	return kvs
 }
 
 //
@@ -24,6 +42,16 @@ func mapF(filename string, contents string) []mapreduce.KeyValue {
 //
 func reduceF(key string, values []string) string {
 	// TODO: you also have to write this function
+	// Diode implement
+	res := 0
+	for _, value := range values {
+		valueInt, err := strconv.Atoi(value)
+		if err != nil {
+			valueInt = 0
+		}
+		res += valueInt
+	}
+	return string(res)
 }
 
 // Can be run in 3 ways:
